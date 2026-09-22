@@ -60,6 +60,8 @@
     const aorticTrace = CardioDisplay.aorticTrace(result);
     const labels = $('volume-labels').getAttribute('aria-pressed') === 'true';
     const relations = $('pv-relations').getAttribute('aria-pressed') === 'true';
+    $('volume-labels').textContent = `${labels ? 'Hide' : 'Show'} EDV · ESV · SV · EF`;
+    $('pv-relations').textContent = `${relations ? 'Hide' : 'Show'} P–V Curves`;
     const refs = CardioModel.relationships(result);
     const annotation = (x,y,t,anchor='start') => `<text x="${x}" y="${y}" text-anchor="${anchor}" class="annotation">${t}</text>`;
     const arrows = id => `<defs><marker id="${id}" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 10 5 L 0 0 L 0 10 Z" fill="#345e65"/></marker></defs>`;
