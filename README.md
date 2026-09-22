@@ -1,5 +1,9 @@
 # Cardiovascular Lab
 
+[Open the live app](https://davidjulian.github.io/CV_Lab/)
+
+Published with GitHub Pages from the root of the main branch. Pushing updates to main automatically republishes the site.
+
 Standalone browser teaching prototype. Open index.html directly in a modern browser; no installation, account, or other app is required.
 
 ## Using the app
