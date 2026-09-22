@@ -1,6 +1,14 @@
 const assert = require('node:assert/strict');
 const { simulate, defaults, derivative, observe } = require('./model.js');
 const base = simulate();
+const exercise = simulate(require('./model.js').exercisePreset);
+assert(exercise.metrics.co > base.metrics.co * 1.5);
+assert(exercise.metrics.sv > base.metrics.sv);
+assert(exercise.metrics.ef > base.metrics.ef);
+assert(exercise.metrics.esv < base.metrics.esv);
+assert(exercise.metrics.systolic > base.metrics.systolic);
+assert(exercise.residual < .0001);
+assert.equal(exercise.metrics.reverse, 0);
 assert(base.metrics.systolic > 115 && base.metrics.systolic < 125);
 assert(Math.max(...base.samples.map(s=>s.plv)) < 130, 'Preserve smooth baseline systolic contour without excessive proximal overshoot');
 assert(base.metrics.diastolic > 70 && base.metrics.diastolic < 90);

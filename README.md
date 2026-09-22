@@ -47,3 +47,11 @@ Run node model.test.js. Checks cover baseline values, physiological directions, 
 
 The solver remains unchanged. display.js applies a smooth downward pulse of at most 3 mmHg during the first 32 ms after the end of forward aortic ejection (shortened at fast rates). It rejoins the original trace exactly, with no repeated oscillations. The normal overlay uses the same display treatment. Leakage attenuates the pulse illustratively. All metrics, P–V curves, ventricular pressure, and model samples remain untouched. No label is placed on the notch. Run node display.test.js to verify separation from the model.
 
+
+## Exercise preset
+
+Exercise (dynamic) sets heart rate to 110 bpm, contractility to 4 mmHg/mL, reservoir filling pressure to 20 mmHg, and peripheral resistance to 0.7 mmHg·s/mL. All other parameters reset to normal, including competent valves. Illustrative output is approximately 9.2 L/min cardiac output, 84 mL stroke volume, and 66% EF. This is not calibrated to a specific workload; reservoir pressure is a proxy for filling support, not LV end diastolic pressure. Active relaxation and muscle-pump dynamics are not separately modeled. Reference: https://pubmed.ncbi.nlm.nih.gov/12507317/ .
+
+
+Physiological evidence: https://pubmed.ncbi.nlm.nih.gov/3349757/ reports an initial EDV increase with mild upright exercise and return toward baseline at higher loads; https://pubmed.ncbi.nlm.nih.gov/3408616/ reports faster relaxation, lower ESV, and increased stroke volume without an EDV or end diastolic pressure increase during supine exercise. Preset parameters are illustrative modeling choices, not values fitted to those studies. The reservoir pressure increase compensates for omitted filling mechanisms; it must not be interpreted as a required increase in ventricular preload or LVEDP. In this preset EDV stays near baseline (127 mL), while ESV falls from about 56 to 43 mL. The model does not reproduce the usual near-constant diastolic arterial pressure precisely (about 90 mmHg versus 79 at rest).
+

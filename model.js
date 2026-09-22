@@ -1,6 +1,7 @@
 (function (root) {
   'use strict';
   const defaults = { hr: 72, contractility: 2.6, preload: 13, resistance: 1.1, compliance: 1.5, mitral: 100, aortic: 100, mitralLeak: 0, aorticLeak: 0, stiffness: 1 };
+  const exercisePreset = Object.freeze({ hr: 110, contractility: 4, preload: 20, resistance: .7 });
   function pulse(t, start, duration) {
     const x = (t - start) / duration;
     return x > 0 && x < 1 ? Math.sin(Math.PI * x) ** 2 : 0;
@@ -72,7 +73,7 @@
     const width = end ? metrics.edv - end.v : 0;
     return { passive, systolic, end, ea: width > .01 ? end.p / width : null };
   }
-  const api = { defaults, simulate, observe, derivative, relationships };
+  const api = { defaults, exercisePreset, simulate, observe, derivative, relationships };
   if (typeof module !== 'undefined') module.exports = api;
   root.CardioModel = api;
 })(globalThis);

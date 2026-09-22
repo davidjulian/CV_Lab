@@ -22,7 +22,7 @@
   const configs = groups.flatMap(g => g[1]);
   $('controls').innerHTML = groups.map(([title, rows]) => `<div class="control-group"><div class="group-title">${title}</div>${rows.map(([id, label, min, max, step, unit, hint]) => `<div class="control"><label for="${id}">${label}<output id="${id}-out"></output></label><input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${params[id]}" aria-describedby="${id}-hint"><small id="${id}-hint">${hint} · ${unit}</small></div>`).join('')}</div>`).join('');
   function sync() { configs.forEach(([id]) => { $(id).value = params[id]; $(id + '-out').textContent = Number(params[id].toFixed(2)); }); }
-  const presets = { normal: {}, weak: { contractility: .9 }, stiff: { compliance: .6 }, as: { aortic: 5 }, ar: { aorticLeak: 1.2 }, ms: { mitral: 5 }, mr: { mitralLeak: 1.2 } };
+  const presets = { normal: {}, exercise: CardioModel.exercisePreset, weak: { contractility: .9 }, stiff: { compliance: .6 }, as: { aortic: 5 }, ar: { aorticLeak: 1.2 }, ms: { mitral: 5 }, mr: { mitralLeak: 1.2 } };
   function recalculate() {
     try {
       result = CardioModel.simulate(params); render();
@@ -57,6 +57,7 @@
   let pvX, pvY, timeX;
   function render() {
     const m = result.metrics;
+    $('exercise-note').hidden = $('preset').value !== 'exercise';
     const aorticTrace = CardioDisplay.aorticTrace(result);
     const labels = $('volume-labels').getAttribute('aria-pressed') === 'true';
     const relations = $('pv-relations').getAttribute('aria-pressed') === 'true';
