@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict');
-const {simulate}=require('./model.js');
-const {aorticTrace}=require('./display.js');
+const {simulate,exercisePreset}=require('./model.js');
+const {aorticTrace,cardiacPhases,sampleAtTime}=require('./display.js');
 const r=simulate(), before=JSON.stringify(r);
 r.samples.forEach(Object.freeze);Object.freeze(r.samples);Object.freeze(r.metrics);Object.freeze(r);
 const trace=aorticTrace(r);
@@ -15,3 +15,34 @@ assert(noEjection.samples.every(s=>aorticTrace(noEjection)(s)===s.pa));
 const leaking=simulate({aorticLeak:3}), leakTrace=aorticTrace(leaking);
 assert(Math.max(...leaking.samples.map(s=>s.pa-leakTrace(s)))<.01);
 console.log('PASS: display-only notch, bounded duration and depth, unchanged model and ejection, absent ejection, and leakage attenuation.');
+
+function phaseSequence(result, expected) {
+  const phases = cardiacPhases(result);
+  assert.deepEqual(phases.map(span => span.phase), expected);
+  assert.equal(phases[0].start, 0);
+  assert.equal(phases.at(-1).end, result.T);
+  phases.forEach(({ start, end }, index) => {
+    assert(end > start);
+    if (index > 0) assert.equal(start, phases[index - 1].end);
+  });
+  return phases;
+}
+const usualPhases = ['atrial', 'contraction', 'ejection', 'relaxation', 'filling'];
+for (const result of [r, simulate(exercisePreset), simulate({mitralLeak:1.2})]) {
+  const phases = phaseSequence(result, usualPhases);
+  const crossings = [
+    [phases[0].end, s => s.pla - s.plv],
+    [phases[2].start, s => s.plv - s.pa],
+    [phases[2].end, s => s.plv - s.pa],
+    [phases[4].start, s => s.pla - s.plv]
+  ];
+  for (const [time, gradient] of crossings) {
+    assert(Math.abs(gradient(sampleAtTime(result.samples, time))) < 1e-8, 'Phase boundary matches a valve event');
+  }
+}
+const aorticRegurgitation = simulate({aorticLeak:1.2});
+phaseSequence(aorticRegurgitation, ['filling', ...usualPhases]);
+assert(aorticRegurgitation.samples.at(-1).qa < 0 && aorticRegurgitation.samples.at(-1).qm <= 0);
+phaseSequence(simulate({atrialContractility:0}), ['filling', 'contraction', 'ejection', 'relaxation', 'filling']);
+assert(cardiacPhases(noEjection).every(span => span.phase !== 'ejection'));
+console.log('PASS: phase timing follows valve events, including exercise, regurgitation and loss of atrial contraction.');

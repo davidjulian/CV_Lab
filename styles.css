@@ -42,3 +42,36 @@
   margin: 2px 0 0;
 }
 #wiggers.has-valve-flow{max-height:none}
+
+.phase-key:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin: 8px 5px;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+}
+.phase-key li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.phase-key li span {
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+}
+.phase-caption {
+  fill: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.phase-guide {
+  stroke: #879da2;
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: .65;
+}

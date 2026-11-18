@@ -45,7 +45,7 @@
     { id: 'aortic-flow', key: 'qa', label: 'Aortic Flow', title: 'Aortic flow (mL/s) · positive into aorta', color: '#cc7750' }
   ];
   const isShown = id => $(id).getAttribute('aria-pressed') === 'true';
-  for (const id of ['volume-labels', 'pv-relations', ...flowPlots.map(plot => plot.id)]) {
+  for (const id of ['volume-labels', 'pv-relations', 'cardiac-phases', ...flowPlots.map(plot => plot.id)]) {
     $(id).addEventListener('click', () => {
       $(id).setAttribute('aria-pressed', String(!isShown(id)));
       render();
@@ -59,22 +59,39 @@
     position = Math.max(0, Math.min(1, (point.x - 58) / 522)); setPlaying(false); cursor();
   });
   const colors = { plv: '#177f77', pa: '#cc7750', pla: '#8b70ad', v: '#427d9b', ecg: '#6e8790' };
+  const phaseStyles = {
+    atrial: { name: 'Atrial contraction & filling', short: 'Atrial', color: '#8751a2' },
+    contraction: { name: 'Isovolumetric contraction', leakName: 'Contraction with valve leakage', short: 'Contract', color: '#185d89' },
+    ejection: { name: 'Ventricular ejection', short: 'Ejection', color: '#147e71' },
+    relaxation: { name: 'Isovolumetric relaxation', leakName: 'Relaxation with valve leakage', short: 'Relax', color: '#ac5539' },
+    filling: { name: 'Ventricular filling', short: 'Filling', color: '#8a681e' }
+  };
+  function phaseName(phase) {
+    const { name, leakName } = phaseStyles[phase];
+    return leakName && (result.p.mitralLeak || result.p.aorticLeak) ? leakName : name;
+  }
+  const sampleAtTime = time => CardioDisplay.sampleAtTime(result.samples, time);
   const line = (x1,y1,x2,y2,cls='grid') => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${cls}"/>`;
   const text = (x,y,t,anchor='start') => `<text x="${x}" y="${y}" text-anchor="${anchor}" class="axis">${t}</text>`;
   const path = (samples, x, y, cls, color) => `<path class="${cls}" ${color ? `stroke="${color}"` : ''} d="${samples.map((s,i) => `${i ? 'L' : 'M'}${x(s).toFixed(2)},${y(s).toFixed(2)}`).join(' ')}"/>`;
   const nice = (value, step) => Math.ceil(value / step) * step;
-  let pvX, pvY, timeX;
+  let pvX, pvY, timeX, cyclePhases;
   function render() {
     const m = result.metrics;
     $('exercise-note').hidden = $('preset').value !== 'exercise';
     const aorticTrace = CardioDisplay.aorticTrace(result);
     const labels = isShown('volume-labels');
     const relations = isShown('pv-relations');
+    const showPhases = isShown('cardiac-phases');
+    const phaseHeight = showPhases ? 32 : 0;
+    cyclePhases = CardioDisplay.cardiacPhases(result);
+    const phases = showPhases ? cyclePhases : [];
     const visibleFlows = flowPlots.filter(({ id }) => isShown(id));
     const flowRowHeight = 120;
     const flowHeight = visibleFlows.length * flowRowHeight;
     $('volume-labels').textContent = `${labels ? 'Hide' : 'Show'} EDV · ESV · SV · EF`;
     $('pv-relations').textContent = `${relations ? 'Hide' : 'Show'} P–V Curves`;
+    $('cardiac-phases').textContent = `${showPhases ? 'Hide' : 'Show'} Cardiac Phases`;
     for (const { id, label } of flowPlots) {
       $(id).textContent = `${isShown(id) ? 'Hide' : 'Show'} ${label}`;
     }
@@ -84,12 +101,19 @@
     const doubleArrow = (x1,y1,x2,y2,id) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="measure" marker-start="url(#${id})" marker-end="url(#${id})"/>`;
     const svText = `SV = EDV − ESV = ${m.edv.toFixed(1)} − ${m.esv.toFixed(1)} = ${m.sv.toFixed(1)} mL`;
     const efText = `EF = SV / EDV × 100 = ${m.ef.toFixed(1)}%`;
-    $('pv').setAttribute('viewBox', `0 0 500 ${labels ? 505 : 400}`);
-    $('wiggers').setAttribute('viewBox', `0 0 600 ${(labels ? 550 : 480) + flowHeight}`);
+    const pvChart = $('pv');
+    pvChart.setAttribute('viewBox', `0 0 500 ${labels ? 505 : 400}`);
+    pvChart.setAttribute('aria-label', `Left ventricular pressure volume loop${showPhases ? ' with cardiac phase segments' : ''}`);
     const wiggers = $('wiggers');
+    wiggers.setAttribute('viewBox', `0 0 600 ${(labels ? 550 : 480) + flowHeight + phaseHeight}`);
     const traceNames = ['pressure', 'ventricular volume', 'schematic ECG', ...visibleFlows.map(({ label }) => label.toLowerCase())];
-    wiggers.setAttribute('aria-label', `Synchronized ${traceNames.join(', ')} over one cardiac cycle`);
+    wiggers.setAttribute('aria-label', `Synchronized ${traceNames.join(', ')} over one cardiac cycle${showPhases ? ' with cardiac phase intervals' : ''}`);
     wiggers.classList.toggle('has-valve-flow', visibleFlows.length > 0);
+    const phaseKey = $('phase-key');
+    phaseKey.hidden = !showPhases;
+    phaseKey.innerHTML = [...new Set(phases.map(span => span.phase))].map(phase =>
+      `<li><span aria-hidden="true" style="background:${phaseStyles[phase].color}"></span>${phaseName(phase)}</li>`
+    ).join('');
     $('relation-key').hidden = !relations;
     $('relation-values').textContent = `Ea = ${refs.ea === null ? 'unavailable (no forward ejection)' : refs.ea.toFixed(2) + ' mmHg/mL'}. ESPVR shows the model’s peak activation envelope, including passive pressure; EDPVR shows passive pressure alone. Ea joins (EDV, 0) to the end of forward aortic ejection. With valve leakage, that volume may differ from minimum volume (ESV), so Ea is an illustrative load estimate.`;
     $('metrics').innerHTML = [['Stroke volume', m.sv.toFixed(0), 'mL'], ['Ejection fraction', m.ef.toFixed(0), '%'], ['Cardiac output', m.co.toFixed(1), 'L/min'], ['Aortic pressure', `${m.systolic.toFixed(0)}/${m.diastolic.toFixed(0)}`, 'mmHg']].map(([label,value,unit]) => `<div class="metric"><span>${label}</span><strong>${value}</strong><small>${unit}</small></div>`).join('');
@@ -109,14 +133,23 @@
       if(refs.ea !== null) pv += path([{v:m.edv,p:0},refs.end],d=>pvX(d.v),d=>pvY(d.p),'reference ea','#477ac1');
       pv += '</g>';
     }
-    pv += path(s,d=>pvX(d.v),d=>pvY(d.plv),'trace',colors.plv) + '<circle id="pv-dot" r="6" class="dot"/>';
+    const volumeX = d => pvX(d.v), pressureY = d => pvY(d.plv);
+    if (showPhases) {
+      for (const { phase, start, end } of phases) {
+        const points = [sampleAtTime(start), ...s.filter(d => d.t > start && d.t < end), sampleAtTime(end)];
+        pv += `<g><title>${phaseName(phase)}</title>${path(points,volumeX,pressureY,'trace',phaseStyles[phase].color)}</g>`;
+      }
+    } else {
+      pv += path(s,volumeX,pressureY,'trace',colors.plv);
+    }
+    pv += '<circle id="pv-dot" r="6" class="dot"/>';
     if(labels) {
       pv += line(pvX(m.esv),34,pvX(m.esv),434,'measure-guide') + line(pvX(m.edv),34,pvX(m.edv),434,'measure-guide');
       pv += annotation(Math.max(90,pvX(m.esv)-4),418,`ESV ${m.esv.toFixed(1)} mL`,'end') + annotation(Math.min(415,pvX(m.edv)+4),418,`EDV ${m.edv.toFixed(1)} mL`);
       pv += doubleArrow(pvX(m.esv),439,pvX(m.edv),439,'pv-arrow');
       pv += annotation(267,466,svText,'middle') + annotation(267,490,efText,'middle');
     }
-    $('pv').innerHTML = pv;
+    pvChart.innerHTML = pv;
     const tx = seconds => 58 + seconds / result.T * 522;
     timeX = tx;
     const yp = p => 222 - p/pmax*184, yv = v => 358-v/vmax*98;
@@ -126,6 +159,10 @@
     for(let i=0;i<=2;i++){const v=i*vmax/2;w+=line(58,yv(v),580,yv(v))+text(48,yv(v)+4,Math.round(v),'end');}
     for(let i=0;i<=4;i++){const t=i/4*result.T,x=tx(t);w+=line(x,35,x,435+flowHeight)+text(x,457+flowHeight,Math.round(t*1000),'middle');}
     w += text(58,247,'Ventricular volume (mL)') + text(58,386,'ECG · schematic') + text(319,478+flowHeight,'Time (ms)','middle');
+    for (const { start } of phases.slice(1)) {
+      const x = tx(start);
+      w += line(x,0,x,438+flowHeight,'phase-guide');
+    }
     if (overlay) {
       for (const k of ['plv','pa','pla']) w += baselinePath(d=>yp(k==='pa'?normalAorticTrace(d):d[k]));
       w += baselinePath(d=>yv(d.v));
@@ -160,39 +197,29 @@
       w+=doubleArrow(578,yv(m.edv),578,yv(m.esv),'w-arrow');
       w+=annotation(319,510+flowHeight,svText,'middle')+annotation(319,535+flowHeight,efText,'middle');
     }
-    wiggers.innerHTML=w; cursor();
-  }
-  function sampleAtTime(samples, time) {
-    let lo = 0, hi = samples.length - 1;
-    while (hi - lo > 1) {
-      const mid = Math.floor((lo + hi) / 2);
-      if (samples[mid].t <= time) lo = mid;
-      else hi = mid;
+    if (showPhases) {
+      const strip = phases.map(({ phase, start, end }) => {
+        const { short, color } = phaseStyles[phase];
+        const x = tx(start), width = tx(end) - x;
+        const label = width > short.length * 7 + 8 ? short : short[0];
+        const caption = width >= 16 ? `<text x="${x + width / 2}" y="20" class="phase-caption">${label}</text>` : '';
+        return `<g><title>${phaseName(phase)} · ${Math.round(start*1000)}–${Math.round(end*1000)} ms</title><rect x="${x}" y="5" width="${width}" height="23" fill="${color}"/>${caption}</g>`;
+      }).join('');
+      w = `<g aria-label="Cardiac phase intervals">${strip}</g><g transform="translate(0 ${phaseHeight})">${w}</g>`;
     }
-    const a = samples[lo], b = samples[hi];
-    const fraction = (time - a.t) / (b.t - a.t);
-    const interpolate = key => a[key] + (b[key] - a[key]) * fraction;
-    return { plv: interpolate('plv'), pla: interpolate('pla'), pa: interpolate('pa'),
-      v: interpolate('v'), qm: interpolate('qm'), qa: interpolate('qa') };
+    wiggers.innerHTML=w; cursor();
   }
   function cursor() {
     const time = position * result.T;
     const timeLabel = `${Math.round(time * 1000)} ms`;
-    const s = sampleAtTime(result.samples, time);
+    const s = sampleAtTime(time);
     $('time').value = Math.round(position*1000);
     $('time-label').textContent = timeLabel;
     $('pv-dot').setAttribute('cx',pvX(s.v));$('pv-dot').setAttribute('cy',pvY(s.plv));
     $('w-cursor').setAttribute('x1',timeX(time));$('w-cursor').setAttribute('x2',timeX(time));
     const mitral = s.pla>s.plv, aortic=s.plv>s.pa;
-    let phase;
-    if (aortic) phase = 'Ventricular ejection';
-    else if (mitral) phase = result.p.atrialContractility > 0 && position < .14 ? 'Atrial contraction & filling' : 'Ventricular filling';
-    else {
-      const rising = time < CardioModel.ventricularPeakTime(result.T);
-      if (result.p.mitralLeak || result.p.aorticLeak) phase = rising ? 'Contraction with valve leakage' : 'Relaxation with valve leakage';
-      else phase = rising ? 'Isovolumetric contraction' : 'Isovolumetric relaxation';
-    }
-    $('phase').textContent=phase;
+    const { phase } = cyclePhases.find(span => time < span.end) ?? cyclePhases.at(-1);
+    $('phase').textContent=phaseName(phase);
     const aorticState = aortic ? 'forward flow' : result.p.aorticLeak ? 'reverse leakage' : 'closed';
     const mitralState = mitral ? 'forward flow' : result.p.mitralLeak ? 'reverse leakage' : 'closed';
     const flowValue = (id, value) => isShown(id) ? ` (${value.toFixed(1)} mL/s)` : '';
