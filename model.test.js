@@ -18,6 +18,17 @@ assert(Math.abs(base.metrics.net - base.metrics.sv) < .02);
 assert.equal(base.metrics.reverse, 0);
 assert(simulate({contractility: .9}).metrics.ef < base.metrics.ef);
 assert(simulate({contractility: 4}).metrics.esv < base.metrics.esv);
+const reducedAtrial = simulate({atrialContractility: 50});
+const passiveAtrial = simulate({atrialContractility: 0});
+assert.equal(passiveAtrial.T, base.T);
+assert.equal(passiveAtrial.p.contractility, base.p.contractility);
+assert(passiveAtrial.residual < .0001);
+assert(passiveAtrial.metrics.edv < reducedAtrial.metrics.edv && reducedAtrial.metrics.edv < base.metrics.edv);
+assert(passiveAtrial.metrics.co < reducedAtrial.metrics.co && reducedAtrial.metrics.co < base.metrics.co);
+for (const s of passiveAtrial.samples) {
+  assert.equal(s.pla, .12 * (s.va - 10), 'Zero atrial contractility leaves only passive atrial pressure');
+}
+assert(passiveAtrial.samples.some(s => s.qm > 0), 'Passive mitral filling persists');
 assert(simulate({preload: 18}).metrics.sv > base.metrics.sv);
 assert(simulate({resistance: 2}).metrics.esv > base.metrics.esv);
 const stiff = simulate({compliance: .6});
@@ -34,7 +45,7 @@ for(const s of leak.samples){
   const conductance = s.qa >= 0 ? leak.p.aortic : leak.p.aorticLeak;
   assert(Math.abs(s.qa - conductance * (s.plv - s.pa)) < 1e-8, 'Valve flow follows the local LV-to-aorta pressure difference');
 }
-const ranges={hr:[40,140],contractility:[.6,4],preload:[6,20],resistance:[.5,2.2],compliance:[.5,3],mitral:[5,150],aortic:[5,150],mitralLeak:[0,3],aorticLeak:[0,3],stiffness:[.5,2],relaxation:[10,60]};
+const ranges={hr:[40,140],contractility:[.6,4],atrialContractility:[0,100],preload:[6,20],resistance:[.5,2.2],compliance:[.5,3],mitral:[5,150],aortic:[5,150],mitralLeak:[0,3],aorticLeak:[0,3],stiffness:[.5,2],relaxation:[10,60]};
 let checked=0;
 function check(p){const r=simulate(p);assert(r.residual<.0001,'Periodic convergence');for(const s of r.samples){assert(Object.values(s).every(Number.isFinite));assert(s.v>0&&s.va>0,'Positive chamber volumes');}checked++;return r;}
 for(const [key,values] of Object.entries(ranges))for(const value of values)check({[key]:value});

@@ -1,6 +1,6 @@
 (function (root) {
   'use strict';
-  const defaults = { hr: 72, contractility: 2.5, preload: 13.5, resistance: 1.1, compliance: 1.7, mitral: 100, aortic: 100, mitralLeak: 0, aorticLeak: 0, stiffness: 1, relaxation: 20 };
+  const defaults = { hr: 72, contractility: 2.5, atrialContractility: 100, preload: 13.5, resistance: 1.1, compliance: 1.7, mitral: 100, aortic: 100, mitralLeak: 0, aorticLeak: 0, stiffness: 1, relaxation: 20 };
   const exercisePreset = Object.freeze({ hr: 110, contractility: 4, preload: 20, resistance: .7, relaxation: 15 });
 
   const proximalResistance = .06; // Characteristic impedance, mmHg·s/mL.
@@ -66,8 +66,9 @@
     const T = 60 / p.hr, phase = ((t % T) + T) % T;
     const activation = ventricularActivation(phase, T, p.relaxation ?? defaults.relaxation);
     const atrial = pulse(phase, 0, .14 * T);
+    const atrialStrength = (p.atrialContractility ?? defaults.atrialContractility) / 100;
     const plv = .3 * p.stiffness * Math.expm1(.03 * (y[0] - 10)) + p.contractility * activation * (y[0] - 10);
-    const pla = (.12 + .2 * atrial) * (y[1] - 10);
+    const pla = (.12 + .2 * atrialStrength * atrial) * (y[1] - 10);
     const valve = (dp, forward, leak) => dp * (dp >= 0 ? forward : leak);
     const qm = valve(pla - plv, p.mitral, p.mitralLeak);
     const reservoirPressure = y[2];

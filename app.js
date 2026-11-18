@@ -9,8 +9,9 @@
   const groups = [
     ['Heart & filling', [
       ['hr', 'Heart rate', 40, 140, 1, 'bpm', 'Controls cycle duration'],
-      ['contractility', 'Contractility', .6, 4, .1, 'mmHg/mL', 'Peak active elastance'],
+      ['contractility', 'Ventricular contractility', .6, 4, .1, 'mmHg/mL', 'Peak active elastance'],
       ['relaxation', 'Ventricular relaxation (τ)', 10, 60, 1, 'ms', 'Higher τ = slower active relaxation'],
+      ['atrialContractility', 'Atrial contractility', 0, 100, 1, '% of normal', 'Zero removes the atrial kick'],
       ['preload', 'Filling pressure', 6, 20, .5, 'mmHg', 'Pulmonary venous reservoir'],
       ['stiffness', 'Diastolic stiffness', .5, 2, .1, '×', 'Passive ventricular stiffness']]],
     ['Arterial load', [
@@ -185,7 +186,7 @@
     const mitral = s.pla>s.plv, aortic=s.plv>s.pa;
     let phase;
     if (aortic) phase = 'Ventricular ejection';
-    else if (mitral) phase = position < .14 ? 'Atrial contraction & filling' : 'Ventricular filling';
+    else if (mitral) phase = result.p.atrialContractility > 0 && position < .14 ? 'Atrial contraction & filling' : 'Ventricular filling';
     else {
       const rising = time < CardioModel.ventricularPeakTime(result.T);
       if (result.p.mitralLeak || result.p.aorticLeak) phase = rising ? 'Contraction with valve leakage' : 'Relaxation with valve leakage';

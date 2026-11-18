@@ -17,7 +17,7 @@ The three state variables are left ventricular volume, left atrial volume, and p
 Pressure is in mmHg, volume in mL, and time in seconds.
 
 - LV pressure = 0.3 × stiffness × [exp(0.03 × (V − 10)) − 1] + contractility × activation(t) × (V − 10).
-- Atrial pressure = [0.12 + 0.2 × atrial activation(t)] × (atrial volume − 10).
+- Atrial pressure = [0.12 + 0.2 × (atrial contractility / 100) × atrial activation(t)] × (atrial volume − 10). Atrial contractility is expressed as a percentage of normal. At 0%, the atrium still supplies passive filling and the beat stays regular.
 - Atrial activation is a squared sine pulse. A smooth interpolated ventricular activation curve sets systolic timing and transitions to exponential decay. The curve is based on the elastance implied by a broad reference flow pulse delivering 72 mL over 290 ms. Its timing scales with the square root of beat period. The ventricular relaxation control sets the late activation time constant τ (10–60 ms). Smaller values give faster relaxation. Peak active elastance and the passive pressure–volume curve are set independently. Residual activation can carry into the next beat.
 - Valve flow = pressure difference × forward conductance for positive gradients, or leakage conductance for negative gradients.
 - dV_LV/dt = mitral flow − aortic flow.
