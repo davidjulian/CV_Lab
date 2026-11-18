@@ -11,9 +11,9 @@
       ['hr', 'Heart rate', 40, 140, 1, 'bpm', 'Controls cycle duration'],
       ['contractility', 'Ventricular contractility', .6, 4, .1, 'mmHg/mL', 'Peak active elastance'],
       ['relaxation', 'Ventricular relaxation (τ)', 10, 60, 1, 'ms', 'Higher τ = slower active relaxation'],
+      ['stiffness', 'Diastolic stiffness', .5, 2, .1, '×', 'Passive ventricular stiffness'],
       ['atrialContractility', 'Atrial contractility', 0, 100, 1, '% of normal', 'Zero removes the atrial kick'],
-      ['preload', 'Filling pressure', 6, 20, .5, 'mmHg', 'Pulmonary venous reservoir'],
-      ['stiffness', 'Diastolic stiffness', .5, 2, .1, '×', 'Passive ventricular stiffness']]],
+      ['preload', 'Filling pressure', 6, 20, .5, 'mmHg', 'Pulmonary venous reservoir']]],
     ['Arterial load', [
       ['resistance', 'Systemic resistance', .5, 2.2, .05, 'mmHg·s/mL', 'Changes peripheral runoff with a fixed proximal impedance'],
       ['compliance', 'Arterial compliance', .5, 3, .1, 'mL/mmHg', 'Lower compliance = stiffer arteries']]],
