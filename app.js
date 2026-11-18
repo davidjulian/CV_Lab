@@ -1,6 +1,8 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
+  const aboutDialog = $('about-dialog');
+  $('about-open').addEventListener('click', () => aboutDialog.showModal());
   const normal = CardioModel.simulate();
   const normalAorticTrace = CardioDisplay.aorticTrace(normal);
   let params = { ...CardioModel.defaults }, result = normal, position = 0, playing = true, last = 0, timer;
@@ -8,10 +10,11 @@
     ['Heart & filling', [
       ['hr', 'Heart rate', 40, 140, 1, 'bpm', 'Controls cycle duration'],
       ['contractility', 'Contractility', .6, 4, .1, 'mmHg/mL', 'Peak active elastance'],
+      ['relaxation', 'Ventricular relaxation (τ)', 10, 60, 1, 'ms', 'Higher τ = slower active relaxation'],
       ['preload', 'Filling pressure', 6, 20, .5, 'mmHg', 'Pulmonary venous reservoir'],
       ['stiffness', 'Diastolic stiffness', .5, 2, .1, '×', 'Passive ventricular stiffness']]],
     ['Arterial load', [
-      ['resistance', 'Peripheral resistance', .5, 2.2, .05, 'mmHg·s/mL', 'Resistance to systemic runoff'],
+      ['resistance', 'Systemic resistance', .5, 2.2, .05, 'mmHg·s/mL', 'Changes peripheral runoff with a fixed proximal impedance'],
       ['compliance', 'Arterial compliance', .5, 3, .1, 'mL/mmHg', 'Lower compliance = stiffer arteries']]],
     ['Valve conductance', [
       ['mitral', 'Mitral forward', 5, 150, 5, 'mL/s/mmHg', 'Lower conductance = greater obstruction'],
@@ -36,7 +39,7 @@
   $('preset').addEventListener('change', () => { clearTimeout(timer); params = { ...CardioModel.defaults, ...presets[$('preset').value] }; sync(); recalculate(); });
   $('reset').addEventListener('click', () => { clearTimeout(timer); params = { ...CardioModel.defaults }; $('preset').value = 'normal'; $('baseline').checked = true; position = 0; sync(); recalculate(); });
   $('baseline').addEventListener('change', render);
-  for (const id of ['volume-labels', 'pv-relations']) {
+  for (const id of ['volume-labels', 'pv-relations', 'mitral-flow']) {
     $(id).addEventListener('click', () => {
       $(id).setAttribute('aria-pressed', String($(id).getAttribute('aria-pressed') !== 'true'));
       render();
@@ -49,7 +52,7 @@
     const point = new DOMPoint(event.clientX, event.clientY).matrixTransform($('wiggers').getScreenCTM().inverse());
     position = Math.max(0, Math.min(1, (point.x - 58) / 522)); setPlaying(false); cursor();
   });
-  const colors = { plv: '#177f77', pa: '#cc7750', pla: '#8b70ad', v: '#427d9b', ecg: '#6e8790' };
+  const colors = { plv: '#177f77', pa: '#cc7750', pla: '#8b70ad', v: '#427d9b', ecg: '#6e8790', qm: '#4453a0' };
   const line = (x1,y1,x2,y2,cls='grid') => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="${cls}"/>`;
   const text = (x,y,t,anchor='start') => `<text x="${x}" y="${y}" text-anchor="${anchor}" class="axis">${t}</text>`;
   const path = (samples, x, y, cls, color) => `<path class="${cls}" ${color ? `stroke="${color}"` : ''} d="${samples.map((s,i) => `${i ? 'L' : 'M'}${x(s).toFixed(2)},${y(s).toFixed(2)}`).join(' ')}"/>`;
@@ -61,8 +64,11 @@
     const aorticTrace = CardioDisplay.aorticTrace(result);
     const labels = $('volume-labels').getAttribute('aria-pressed') === 'true';
     const relations = $('pv-relations').getAttribute('aria-pressed') === 'true';
+    const flow = $('mitral-flow').getAttribute('aria-pressed') === 'true';
+    const flowHeight = flow ? 120 : 0;
     $('volume-labels').textContent = `${labels ? 'Hide' : 'Show'} EDV · ESV · SV · EF`;
     $('pv-relations').textContent = `${relations ? 'Hide' : 'Show'} P–V Curves`;
+    $('mitral-flow').textContent = `${flow ? 'Hide' : 'Show'} Mitral Flow`;
     const refs = CardioModel.relationships(result);
     const annotation = (x,y,t,anchor='start') => `<text x="${x}" y="${y}" text-anchor="${anchor}" class="annotation">${t}</text>`;
     const arrows = id => `<defs><marker id="${id}" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 10 5 L 0 0 L 0 10 Z" fill="#345e65"/></marker></defs>`;
@@ -70,7 +76,8 @@
     const svText = `SV = EDV − ESV = ${m.edv.toFixed(1)} − ${m.esv.toFixed(1)} = ${m.sv.toFixed(1)} mL`;
     const efText = `EF = SV / EDV × 100 = ${m.ef.toFixed(1)}%`;
     $('pv').setAttribute('viewBox', `0 0 500 ${labels ? 505 : 400}`);
-    $('wiggers').setAttribute('viewBox', `0 0 600 ${labels ? 550 : 480}`);
+    $('wiggers').setAttribute('viewBox', `0 0 600 ${(labels ? 550 : 480) + flowHeight}`);
+    $('wiggers').setAttribute('aria-label', `Synchronized pressure, ventricular volume, schematic ECG${flow ? ', and signed mitral flow' : ''} over one cardiac cycle`);
     $('relation-key').hidden = !relations;
     $('relation-values').textContent = `Ea = ${refs.ea === null ? 'unavailable (no forward ejection)' : refs.ea.toFixed(2) + ' mmHg/mL'}. ESPVR shows the model’s peak activation envelope, including passive pressure; EDPVR shows passive pressure alone. Ea joins (EDV, 0) to the end of forward aortic ejection. With valve leakage, that volume may differ from minimum volume (ESV), so Ea is an illustrative load estimate.`;
     $('metrics').innerHTML = [['Stroke volume', m.sv.toFixed(0), 'mL'], ['Ejection fraction', m.ef.toFixed(0), '%'], ['Cardiac output', m.co.toFixed(1), 'L/min'], ['Aortic pressure', `${m.systolic.toFixed(0)}/${m.diastolic.toFixed(0)}`, 'mmHg']].map(([label,value,unit]) => `<div class="metric"><span>${label}</span><strong>${value}</strong><small>${unit}</small></div>`).join('');
@@ -103,14 +110,28 @@
     let w = arrows('w-arrow') + text(58,19,'Pressure (mmHg)');
     for(let i=0;i<=4;i++){const p=i*pmax/4;w+=line(58,yp(p),580,yp(p))+text(48,yp(p)+4,Math.round(p),'end');}
     for(let i=0;i<=2;i++){const v=i*vmax/2;w+=line(58,yv(v),580,yv(v))+text(48,yv(v)+4,Math.round(v),'end');}
-    for(let i=0;i<=4;i++){const x=tx(i/4);w+=line(x,35,x,435)+text(x,457,Math.round(i/4*result.T*1000),'middle');}
-    w += text(58,247,'Ventricular volume (mL)') + text(58,386,'ECG · schematic') + text(319,478,'Time (ms)','middle');
+    for(let i=0;i<=4;i++){const x=tx(i/4);w+=line(x,35,x,435+flowHeight)+text(x,457+flowHeight,Math.round(i/4*result.T*1000),'middle');}
+    w += text(58,247,'Ventricular volume (mL)') + text(58,386,'ECG · schematic') + text(319,478+flowHeight,'Time (ms)','middle');
     if(overlay){for(const k of ['plv','pa','pla'])w+=path(normal.samples,d=>tx(d.t/normal.T),d=>yp(k==='pa'?normalAorticTrace(d):d[k]),'base');w+=path(normal.samples,d=>tx(d.t/normal.T),d=>yv(d.v),'base');}
     for(const k of ['plv','pa','pla']) w+=path(s,d=>tx(d.t/result.T),d=>yp(k==='pa'?aorticTrace(d):d[k]),'trace',colors[k]);
     w+=path(s,d=>tx(d.t/result.T),d=>yv(d.v),'trace',colors.v);
     const gauss=(x,mu,sd)=>Math.exp(-.5*((x-mu)/sd)**2);
     w+=path(s,d=>tx(d.t/result.T),d=>{const f=d.t/result.T;return 424-18*(.22*gauss(f,.025,.015)-.17*gauss(f,.091,.004)+1.1*gauss(f,.104,.004)-.3*gauss(f,.117,.005)+.38*gauss(f,.39,.045));},'trace',colors.ecg);
-    w+='<line id="w-cursor" y1="30" y2="438" class="cursor"/>';
+    if (flow) {
+      const flows = all.map(sample => sample.qm);
+      const tick = nice(Math.max(100, ...flows.map(Math.abs)) / 4, 25);
+      const maxFlow = nice(Math.max(tick, ...flows), tick);
+      const minFlow = -nice(Math.max(0, -Math.min(...flows)), tick);
+      const flowY = value => 555 - 87 * (value - minFlow) / (maxFlow - minFlow);
+      w += text(58,456,'Mitral flow (mL/s) · positive into LV');
+      for (let value = minFlow; value <= maxFlow; value += tick) {
+        const y = flowY(value);
+        w += line(58,y,580,y,value === 0 ? 'measure-guide' : 'grid') + text(48,y+4,value || 0,'end');
+      }
+      if (overlay) w += path(normal.samples,d=>tx(d.t/normal.T),d=>flowY(d.qm),'base');
+      w += path(s,d=>tx(d.t/result.T),d=>flowY(d.qm),'trace',colors.qm);
+    }
+    w += `<line id="w-cursor" y1="30" y2="${438+flowHeight}" class="cursor"/>`;
     if(labels) {
       const ed = s.reduce((a,b)=>b.v>a.v?b:a), es=s.reduce((a,b)=>b.v<a.v?b:a);
       for(const [point,label] of [[ed,'EDV'],[es,'ESV']]) {
@@ -119,7 +140,7 @@
         w+=annotation(568,y-6,`${label} ${point.v.toFixed(1)} mL`,'end');
       }
       w+=doubleArrow(578,yv(m.edv),578,yv(m.esv),'w-arrow');
-      w+=annotation(319,510,svText,'middle')+annotation(319,535,efText,'middle');
+      w+=annotation(319,510+flowHeight,svText,'middle')+annotation(319,535+flowHeight,efText,'middle');
     }
     $('wiggers').innerHTML=w; cursor();
   }
@@ -130,10 +151,12 @@
     $('w-cursor').setAttribute('x1',timeX(position));$('w-cursor').setAttribute('x2',timeX(position));
     const mitral = s.pla>s.plv, aortic=s.plv>s.pa;
     let phase=aortic?'Ventricular ejection':mitral?(s.t/result.T<.14?'Atrial contraction & filling':'Ventricular filling'):(s.activation>.4?'Isovolumetric contraction':'Isovolumetric relaxation');
-    if(!mitral&&!aortic){const rising=s.t < .12*result.T+.17*(result.T/(60/72))**.3;phase=rising?'Isovolumetric contraction':'Isovolumetric relaxation';if(params.mitralLeak||params.aorticLeak)phase=rising?'Contraction with valve leakage':'Relaxation with valve leakage';}
+    if(!mitral&&!aortic){const rising=s.t < CardioModel.ventricularPeakTime(result.T);phase=rising?'Isovolumetric contraction':'Isovolumetric relaxation';if(params.mitralLeak||params.aorticLeak)phase=rising?'Contraction with valve leakage':'Relaxation with valve leakage';}
     $('phase').textContent=phase;
     const aorticState = aortic ? 'forward flow' : result.p.aorticLeak ? 'reverse leakage' : 'closed';
-    $('instant').innerHTML=`LV <b>${s.plv.toFixed(1)} mmHg</b> · Volume <b>${s.v.toFixed(1)} mL</b><br>Mitral: ${mitral?'forward flow':params.mitralLeak?'reverse leakage':'closed'} · Aortic: ${aorticState}<br>EDV ${result.metrics.edv.toFixed(0)} mL · ESV ${result.metrics.esv.toFixed(0)} mL · Stroke work ${result.metrics.work.toFixed(2)} J`;
+    const mitralState = mitral ? 'forward flow' : result.p.mitralLeak ? 'reverse leakage' : 'closed';
+    const flowValue = $('mitral-flow').getAttribute('aria-pressed') === 'true' ? ` (${s.qm.toFixed(1)} mL/s)` : '';
+    $('instant').innerHTML=`LV <b>${s.plv.toFixed(1)} mmHg</b> · Volume <b>${s.v.toFixed(1)} mL</b><br>Mitral: ${mitralState}${flowValue} · Aortic: ${aorticState}<br>EDV ${result.metrics.edv.toFixed(0)} mL · ESV ${result.metrics.esv.toFixed(0)} mL · Stroke work ${result.metrics.work.toFixed(2)} J`;
   }
   function animate(now){if(last && playing){position=(position+Math.min(now-last,100)/1000/result.T*.5)%1;cursor();}last=now;requestAnimationFrame(animate);}
   sync();recalculate();requestAnimationFrame(animate);
