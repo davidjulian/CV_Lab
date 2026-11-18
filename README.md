@@ -8,7 +8,7 @@ Standalone browser teaching prototype. Open index.html directly in a modern brow
 
 ## Using the app
 
-Adjust controls or select a preset. The P–V loop and Wiggers diagram show the same settled beat. Pause and use the cycle slider or click the Wiggers diagram to inspect a moment. **Show Mitral Flow** adds a trace on the Wiggers time axis, in mL/s. Positive flow goes into the LV, and negative flow is regurgitant. The cursor readout shows the signed flow at that point, and the normal overlay adds the corresponding resting trace.
+Adjust controls or select a preset. The P–V loop and Wiggers diagram show the same settled beat. Pause and use the cycle slider or click the Wiggers diagram to inspect a moment. **Show Mitral Flow** and **Show Aortic Flow** add separate traces on the same Wiggers time axis, in mL/s. Positive mitral flow enters the left ventricle and positive aortic flow enters the aorta. Negative flow indicates regurgitation. The cursor readout shows flow for each visible valve trace, and the normal overlay adds the corresponding resting trace.
 
 ## Hemodynamic model
 

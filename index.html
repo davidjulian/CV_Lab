@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Cardiovascular Lab · Windkessel Explorer</title><link rel="icon" type="image/svg+xml" href="./favicon.svg?v=1"><link rel="stylesheet" href="styles.css?v=11"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Cardiovascular Lab · Windkessel Explorer</title><link rel="icon" type="image/svg+xml" href="./favicon.svg?v=1"><link rel="stylesheet" href="styles.css?v=12"></head>
 <body>
 <header><div class="brand"><span class="mark" aria-hidden="true">♥</span> Cardiovascular Lab</div><button id="about-open" type="button" aria-haspopup="dialog" aria-controls="about-dialog">About</button></header>
 <main>
@@ -10,7 +10,7 @@
 <section class="workspace">
 <div id="metrics" class="metrics" aria-live="polite"></div>
 <div class="transport panel"><button id="play" class="primary">Pause</button><label for="time">Cycle position</label><input id="time" type="range" min="0" max="1000" value="0"><output id="time-label">0 ms</output><label class="check"><input id="baseline" type="checkbox" checked> Normal overlay</label></div>
-<div class="annotation-toolbar"><button id="volume-labels" class="small-toggle" aria-pressed="false" aria-controls="pv wiggers">Show EDV · ESV · SV · EF</button><button id="pv-relations" class="small-toggle" aria-pressed="false" aria-controls="pv relation-key">Show P–V Curves</button><button id="mitral-flow" class="small-toggle" aria-pressed="false" aria-controls="wiggers">Show Mitral Flow</button></div><div class="charts">
+<div class="annotation-toolbar"><button id="volume-labels" class="small-toggle" aria-pressed="false" aria-controls="pv wiggers">Show EDV · ESV · SV · EF</button><button id="pv-relations" class="small-toggle" aria-pressed="false" aria-controls="pv relation-key">Show P–V Curves</button><button id="mitral-flow" class="small-toggle" aria-pressed="false" aria-controls="wiggers">Show Mitral Flow</button><button id="aortic-flow" class="small-toggle" aria-pressed="false" aria-controls="wiggers">Show Aortic Flow</button></div><div class="charts">
 <section class="panel chart-card"><div class="chart-title"><div><p class="eyebrow">PRESSURE × VOLUME</p><h2>Ventricular P–V loop</h2></div><span class="pill">Left ventricle</span></div><svg id="pv" viewBox="0 0 500 400" role="img" aria-label="Left ventricular pressure volume loop"></svg><div id="relation-key" hidden><div class="reference-legend"><span class="espvr-key">ESPVR</span><span class="edpvr-key">EDPVR</span><span class="ea-key">Arterial elastance (Ea)</span></div><p id="relation-values" class="chart-note"></p></div><p class="chart-note">Follow the dot through filling, contraction, ejection, and relaxation.</p></section>
 <section class="panel chart-card"><div class="chart-title"><div><p class="eyebrow">PRESSURE & VOLUME × TIME</p><h2>Wiggers diagram</h2></div></div><div class="legend"><span class="lv">● Ventricle</span><span class="ao">● Aorta</span><span class="la">● Atrium</span></div><svg id="wiggers" viewBox="0 0 600 480" role="img" aria-label="Synchronized pressure, ventricular volume, and schematic ECG over one cardiac cycle"></svg><p class="chart-note">Click the Wiggers diagram or drag the cycle slider to inspect a moment. Aortic notch is schematic.</p></section>
 </div>
@@ -27,7 +27,8 @@
     </div>
     <div>
       <h3>Reading the plots</h3>
-      <p>The P–V loop and Wiggers diagram show the same settled beat. Use the cursor to connect time, valve events, pressures, and volume. The dashed normal overlay in the Wiggers diagram uses the same elapsed time in milliseconds as the current beat and shows only the part of the normal beat that fits. In the optional mitral flow trace, positive flow enters the ventricle and negative flow indicates regurgitation.</p>
+      <p>The P–V loop and Wiggers diagram show the same settled beat. Use the cursor to connect time, valve events, pressures, and volume. The dashed normal overlay in the Wiggers diagram uses the same elapsed time in milliseconds as the current beat and shows only the part of the normal beat that fits.</p>
+      <p>Positive mitral flow enters the left ventricle and positive aortic flow enters the aorta. Negative flow indicates regurgitation. The mitral E wave comes from early filling as the ventricle relaxes. The A wave comes from atrial contraction, which is at the start of the plotted cycle. Over a settled beat, net mitral inflow equals net aortic outflow.</p>
       <p>Stroke volume is end diastolic volume (EDV) minus end systolic volume (ESV). Ejection fraction is stroke volume divided by EDV. Cardiac output uses net aortic flow, so with regurgitation a large stroke volume can coexist with reduced forward delivery to the circulation.</p>
       <h3>What the model represents</h3>
       <p>The left heart receives blood from a reservoir at the chosen filling pressure. Systemic runoff drains to a fixed pressure boundary. The presets illustrate changes in left heart function and arterial load. Exercise combines changes in rate, contractility, relaxation, filling support, and resistance. The ECG and aortic notch are schematic.</p>
@@ -55,5 +56,5 @@
     </dl>
   </div>
 </dialog>
-<script src="model.js?v=13"></script><script src="display.js?v=10"></script><script src="app.js?v=14"></script>
+<script src="model.js?v=13"></script><script src="display.js?v=10"></script><script src="app.js?v=15"></script>
 </body></html>
