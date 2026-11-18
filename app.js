@@ -105,18 +105,23 @@
       pv += annotation(267,466,svText,'middle') + annotation(267,490,efText,'middle');
     }
     $('pv').innerHTML = pv;
-    const tx = f => 58 + f * 522; timeX = tx;
+    const tx = seconds => 58 + seconds / result.T * 522;
+    timeX = tx;
     const yp = p => 222 - p/pmax*184, yv = v => 358-v/vmax*98;
-    let w = arrows('w-arrow') + text(58,19,'Pressure (mmHg)');
+    const baselinePath = y => `<g clip-path="url(#w-time-window)">${path(normal.samples,d=>tx(d.t),y,'base')}</g>`;
+    let w = arrows('w-arrow') + '<defs><clipPath id="w-time-window"><rect x="58" y="30" width="522" height="528"/></clipPath></defs>' + text(58,19,'Pressure (mmHg)');
     for(let i=0;i<=4;i++){const p=i*pmax/4;w+=line(58,yp(p),580,yp(p))+text(48,yp(p)+4,Math.round(p),'end');}
     for(let i=0;i<=2;i++){const v=i*vmax/2;w+=line(58,yv(v),580,yv(v))+text(48,yv(v)+4,Math.round(v),'end');}
-    for(let i=0;i<=4;i++){const x=tx(i/4);w+=line(x,35,x,435+flowHeight)+text(x,457+flowHeight,Math.round(i/4*result.T*1000),'middle');}
+    for(let i=0;i<=4;i++){const t=i/4*result.T,x=tx(t);w+=line(x,35,x,435+flowHeight)+text(x,457+flowHeight,Math.round(t*1000),'middle');}
     w += text(58,247,'Ventricular volume (mL)') + text(58,386,'ECG · schematic') + text(319,478+flowHeight,'Time (ms)','middle');
-    if(overlay){for(const k of ['plv','pa','pla'])w+=path(normal.samples,d=>tx(d.t/normal.T),d=>yp(k==='pa'?normalAorticTrace(d):d[k]),'base');w+=path(normal.samples,d=>tx(d.t/normal.T),d=>yv(d.v),'base');}
-    for(const k of ['plv','pa','pla']) w+=path(s,d=>tx(d.t/result.T),d=>yp(k==='pa'?aorticTrace(d):d[k]),'trace',colors[k]);
-    w+=path(s,d=>tx(d.t/result.T),d=>yv(d.v),'trace',colors.v);
+    if (overlay) {
+      for (const k of ['plv','pa','pla']) w += baselinePath(d=>yp(k==='pa'?normalAorticTrace(d):d[k]));
+      w += baselinePath(d=>yv(d.v));
+    }
+    for(const k of ['plv','pa','pla']) w+=path(s,d=>tx(d.t),d=>yp(k==='pa'?aorticTrace(d):d[k]),'trace',colors[k]);
+    w+=path(s,d=>tx(d.t),d=>yv(d.v),'trace',colors.v);
     const gauss=(x,mu,sd)=>Math.exp(-.5*((x-mu)/sd)**2);
-    w+=path(s,d=>tx(d.t/result.T),d=>{const f=d.t/result.T;return 424-18*(.22*gauss(f,.025,.015)-.17*gauss(f,.091,.004)+1.1*gauss(f,.104,.004)-.3*gauss(f,.117,.005)+.38*gauss(f,.39,.045));},'trace',colors.ecg);
+    w+=path(s,d=>tx(d.t),d=>{const f=d.t/result.T;return 424-18*(.22*gauss(f,.025,.015)-.17*gauss(f,.091,.004)+1.1*gauss(f,.104,.004)-.3*gauss(f,.117,.005)+.38*gauss(f,.39,.045));},'trace',colors.ecg);
     if (flow) {
       const flows = all.map(sample => sample.qm);
       const tick = nice(Math.max(100, ...flows.map(Math.abs)) / 4, 25);
@@ -128,15 +133,15 @@
         const y = flowY(value);
         w += line(58,y,580,y,value === 0 ? 'measure-guide' : 'grid') + text(48,y+4,value || 0,'end');
       }
-      if (overlay) w += path(normal.samples,d=>tx(d.t/normal.T),d=>flowY(d.qm),'base');
-      w += path(s,d=>tx(d.t/result.T),d=>flowY(d.qm),'trace',colors.qm);
+      if (overlay) w += baselinePath(d=>flowY(d.qm));
+      w += path(s,d=>tx(d.t),d=>flowY(d.qm),'trace',colors.qm);
     }
     w += `<line id="w-cursor" y1="30" y2="${438+flowHeight}" class="cursor"/>`;
     if(labels) {
       const ed = s.reduce((a,b)=>b.v>a.v?b:a), es=s.reduce((a,b)=>b.v<a.v?b:a);
       for(const [point,label] of [[ed,'EDV'],[es,'ESV']]) {
         const y=yv(point.v);
-        w+=line(58,y,570,y,'measure-guide') + `<circle cx="${tx(point.t/result.T)}" cy="${y}" r="4" fill="#427d9b"/>`;
+        w+=line(58,y,570,y,'measure-guide') + `<circle cx="${tx(point.t)}" cy="${y}" r="4" fill="#427d9b"/>`;
         w+=annotation(568,y-6,`${label} ${point.v.toFixed(1)} mL`,'end');
       }
       w+=doubleArrow(578,yv(m.edv),578,yv(m.esv),'w-arrow');
@@ -144,19 +149,41 @@
     }
     $('wiggers').innerHTML=w; cursor();
   }
+  function sampleAtTime(samples, time) {
+    let lo = 0, hi = samples.length - 1;
+    while (hi - lo > 1) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (samples[mid].t <= time) lo = mid;
+      else hi = mid;
+    }
+    const a = samples[lo], b = samples[hi];
+    const fraction = (time - a.t) / (b.t - a.t);
+    const interpolate = key => a[key] + (b[key] - a[key]) * fraction;
+    return { plv: interpolate('plv'), pla: interpolate('pla'), pa: interpolate('pa'),
+      v: interpolate('v'), qm: interpolate('qm') };
+  }
   function cursor() {
-    const s=result.samples[Math.min(result.samples.length-1,Math.round(position*(result.samples.length-1)))];
-    $('time').value = Math.round(position*1000); $('time-label').textContent = `${Math.round(s.t*1000)} ms`;
+    const time = position * result.T;
+    const timeLabel = `${Math.round(time * 1000)} ms`;
+    const s = sampleAtTime(result.samples, time);
+    $('time').value = Math.round(position*1000);
+    $('time-label').textContent = timeLabel;
     $('pv-dot').setAttribute('cx',pvX(s.v));$('pv-dot').setAttribute('cy',pvY(s.plv));
-    $('w-cursor').setAttribute('x1',timeX(position));$('w-cursor').setAttribute('x2',timeX(position));
+    $('w-cursor').setAttribute('x1',timeX(time));$('w-cursor').setAttribute('x2',timeX(time));
     const mitral = s.pla>s.plv, aortic=s.plv>s.pa;
-    let phase=aortic?'Ventricular ejection':mitral?(s.t/result.T<.14?'Atrial contraction & filling':'Ventricular filling'):(s.activation>.4?'Isovolumetric contraction':'Isovolumetric relaxation');
-    if(!mitral&&!aortic){const rising=s.t < CardioModel.ventricularPeakTime(result.T);phase=rising?'Isovolumetric contraction':'Isovolumetric relaxation';if(params.mitralLeak||params.aorticLeak)phase=rising?'Contraction with valve leakage':'Relaxation with valve leakage';}
+    let phase;
+    if (aortic) phase = 'Ventricular ejection';
+    else if (mitral) phase = position < .14 ? 'Atrial contraction & filling' : 'Ventricular filling';
+    else {
+      const rising = time < CardioModel.ventricularPeakTime(result.T);
+      if (result.p.mitralLeak || result.p.aorticLeak) phase = rising ? 'Contraction with valve leakage' : 'Relaxation with valve leakage';
+      else phase = rising ? 'Isovolumetric contraction' : 'Isovolumetric relaxation';
+    }
     $('phase').textContent=phase;
     const aorticState = aortic ? 'forward flow' : result.p.aorticLeak ? 'reverse leakage' : 'closed';
     const mitralState = mitral ? 'forward flow' : result.p.mitralLeak ? 'reverse leakage' : 'closed';
     const flowValue = $('mitral-flow').getAttribute('aria-pressed') === 'true' ? ` (${s.qm.toFixed(1)} mL/s)` : '';
-    $('instant').innerHTML=`LV <b>${s.plv.toFixed(1)} mmHg</b> · Volume <b>${s.v.toFixed(1)} mL</b><br>Mitral: ${mitralState}${flowValue} · Aortic: ${aorticState}<br>EDV ${result.metrics.edv.toFixed(0)} mL · ESV ${result.metrics.esv.toFixed(0)} mL · Stroke work ${result.metrics.work.toFixed(2)} J`;
+    $('instant').innerHTML=`Time <b>${timeLabel}</b> · LV <b>${s.plv.toFixed(1)} mmHg</b> · Volume <b>${s.v.toFixed(1)} mL</b><br>Mitral: ${mitralState}${flowValue} · Aortic: ${aorticState}<br>EDV ${result.metrics.edv.toFixed(0)} mL · ESV ${result.metrics.esv.toFixed(0)} mL · Stroke work ${result.metrics.work.toFixed(2)} J`;
   }
   function animate(now){if(last && playing){position=(position+Math.min(now-last,100)/1000/result.T*.5)%1;cursor();}last=now;requestAnimationFrame(animate);}
   sync();recalculate();requestAnimationFrame(animate);
